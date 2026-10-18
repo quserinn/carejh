@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 캐시합니다.
 // 캐시를 먼저 보여주고 백그라운드에서 새 버전을 받아오므로, 배포 후 두 번째 실행부터 새 버전이 보입니다.
-const CACHE = 'carejh-v1';
+const CACHE = 'carejh-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,8 @@ const ASSETS = [
   './js/app.js',
   './js/util.js',
   './js/icons.js',
+  './js/characters.js',
+  './js/score.js',
   './js/constants.js',
   './js/store.js',
   './js/metrics.js',
@@ -18,6 +20,11 @@ const ASSETS = [
   './js/views/calendar.js',
   './js/views/stats.js',
   './js/views/settings.js',
+  './js/views/onboarding.js',
+  './fonts/Pretendard-Regular.subset.woff2',
+  './fonts/Pretendard-SemiBold.subset.woff2',
+  './fonts/Pretendard-Bold.subset.woff2',
+  './fonts/Pretendard-ExtraBold.subset.woff2',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',

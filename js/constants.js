@@ -1,17 +1,15 @@
-// 기록 화면에 나오는 순서
+// 기록 화면에 나오는 순서. 아이콘은 icons.js에서 같은 이름으로 찾습니다.
 export const CATS = [
   { key: 'sleep', label: '수면', emoji: '🌙' },
   { key: 'meal', label: '식사', emoji: '🍚' },
   { key: 'exercise', label: '운동', emoji: '🏃' },
   { key: 'alcohol', label: '음주', emoji: '🍷' },
   { key: 'water', label: '물', emoji: '💧' },
+  { key: 'supplement', label: '영양제', emoji: '💊' },
   { key: 'weight', label: '체중', emoji: '⚖️' },
   { key: 'mood', label: '컨디션', emoji: '😊' },
 ];
 export const CAT = Object.fromEntries(CATS.map((c) => [c.key, c]));
-
-// 캘린더 점 순서: 이웃한 색끼리 색각이상에서도 구분되도록 검증한 순서
-export const DOT_ORDER = ['water', 'meal', 'exercise', 'mood', 'alcohol', 'weight', 'sleep'];
 
 export const catColor = (key) => `var(--c-${key})`;
 
@@ -63,6 +61,7 @@ export const DRINKS = [
   { key: 'somaek', emoji: '🍻', label: '소맥', unit: '잔', grams: 12, note: '맥주잔 한 잔' },
   { key: 'wine', emoji: '🍷', label: '와인', unit: '잔', grams: 15.4, note: '150ml' },
   { key: 'makgeolli', emoji: '🥛', label: '막걸리', unit: '사발', grams: 9.5, note: '200ml' },
+  { key: 'yakju', emoji: '🍶', label: '약주', unit: '잔', grams: 5.1, note: '백세주·청하 등 50ml' },
   { key: 'whisky', emoji: '🥃', label: '위스키·양주', unit: '샷', grams: 9.5, note: '30ml' },
   { key: 'highball', emoji: '🍸', label: '하이볼·칵테일', unit: '잔', grams: 12, note: '' },
 ];
@@ -78,3 +77,5 @@ export const MOODS = [
 ];
 
 export const CUP_ML = 250;
+
+export const SUPP_SUGGESTIONS = ['종합비타민', '비타민D', '오메가3', '유산균', '마그네슘', '비타민C', '철분', '루테인', '아연', '콜라겐'];

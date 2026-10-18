@@ -2,10 +2,12 @@ import {
   h, todayKey, addDays, diffDays, rangeKeys, mondayOf, fmtMD, fmtDayTitle, fmtDuration, fmtNum, mean, sum, WD, keyOf, pad2, parseKey,
 } from '../util.js';
 import * as store from '../store.js';
-import { CAT, MEALS, MEAL_RATING, EXERCISES, EXERCISE, DRINKS, MOODS, CUP_ML } from '../constants.js';
-import { dayMetrics, clockOfRel, sojuGlasses, drinkList, streak, anyLogged } from '../metrics.js';
+import { MEALS, MEAL_RATING, EXERCISES, EXERCISE, DRINKS, MOODS, CUP_ML } from '../constants.js';
+import { dayMetrics, clockOfRel, sojuGlasses, drinkList, streak, anyLogged, activeSupps } from '../metrics.js';
+import { dayScore, scoreTier } from '../score.js';
 import { barChart, rangeChart, lineChart, mealMatrix, hbarList, tableView } from '../charts.js';
 import { icon } from '../icons.js';
+import { character, duo, charSVG, CHARACTERS, MOOD_EXPR } from '../characters.js';
 
 const PERIODS = [['week', '주간'], ['month', '월간'], ['quarter', '3개월']];
 const PREV_LABEL = { week: '지난주', month: '지난달', quarter: '직전 3개월' };
@@ -83,30 +85,59 @@ export function renderStats(app) {
     { class: 'stats-controls' },
     h(
       'div',
-      { class: 'seg seg-period', role: 'tablist' },
+      { class: 'seg-period', role: 'tablist' },
       PERIODS.map(([k, l]) =>
-        h('button', { class: 'seg-btn' + (type === k ? ' on' : ''), role: 'tab', 'aria-selected': type === k, onclick: () => { st.statsPeriod = k; st.statsAnchor = today; app.render({ keepScroll: true }); } }, l)
+        h('button', { class: type === k ? 'on' : '', role: 'tab', 'aria-selected': type === k, onclick: () => { st.statsPeriod = k; st.statsAnchor = today; app.render({ keepScroll: true }); } }, l)
       )
     ),
     h(
       'div',
-      { class: 'date-nav' },
+      { class: 'period-nav' },
       h('button', { class: 'icon-btn', 'aria-label': '이전 기간', onclick: () => { st.statsAnchor = P.prevAnchor; app.render({ keepScroll: true }); } }, icon('chevL')),
-      h('div', { class: 'date-label static' }, P.title),
+      h('div', { class: 'period-title' }, P.title),
       h('button', { class: 'icon-btn', 'aria-label': '다음 기간', disabled: P.end >= today, onclick: () => { st.statsAnchor = P.nextAnchor; app.render({ keepScroll: true }); } }, icon('chevR'))
     )
   );
 
-  const view = h('div', { class: 'view' }, h('h1', { class: 'page-title' }, '통계'), controls);
+  const me = settings.character || 'lion';
+  const view = h('div', { class: 'view' }, h('div', { class: 'page-head' }, h('h1', { class: 'page-title' }, '통계')), controls);
 
   if (!store.dayCount()) {
-    view.append(h('div', { class: 'empty' }, h('div', { class: 'big' }, '📊'), h('b', null, '아직 기록이 없어요'), '기록을 시작하면 여기에서 한눈에 볼 수 있어요.'));
+    view.append(h('div', { class: 'card empty' }, duo('wow', 'good'), h('b', null, '아직 기록이 없어요'), '기록을 시작하면 여기에서 한눈에 볼 수 있어요.'));
     return view;
   }
 
   // ---------- 요약 타일 ----------
   const tiles = [];
   const elapsed = P.keys.filter((k) => k <= today).length || 1;
+
+  // 하루 건강 점수
+  const scoreCache = new Map();
+  const scoreOf = (k) => {
+    if (!scoreCache.has(k)) scoreCache.set(k, dayScore(store.getDay(k), settings).score);
+    return scoreCache.get(k);
+  };
+  const scoresIn = (keys) => keys.map(scoreOf).filter((v) => v != null);
+  {
+    const cur = mean(scoresIn(P.keys));
+    const n = scoresIn(P.keys).length;
+    const tier = cur != null ? scoreTier(Math.round(cur)) : null;
+    tiles.push(
+      h(
+        'div',
+        { class: 'tile wide' },
+        character(me, tier ? tier.expr : 'sleepy', { size: 60 }),
+        h(
+          'div',
+          { class: 'tile-main' },
+          h('div', { class: 'tile-label' }, '평균 건강 점수'),
+          h('div', { class: 'tile-value' }, cur != null ? `${Math.round(cur)}점` : '–'),
+          deltaEl(cur, mean(scoresIn(PP.keys)), { fmt: (v) => `${Math.round(v)}점`, eps: 0.5, good: 'up' }),
+          h('div', { class: 'tile-sub' }, n ? `${tier.label} · 점수가 나온 날 ${n}일` : '아직 점수가 나온 날이 없어요')
+        )
+      )
+    );
+  }
 
   if (en.sleep) {
     const goal = goals.sleepHours * 60;
@@ -159,6 +190,15 @@ export function renderStats(app) {
       sub: cur != null ? `목표 ${goals.waterCups}잔 달성 ${cnt(P.keys, (m) => m.water >= goals.waterCups)}일` : '기록 없음',
     }));
   }
+  if (en.supplement && activeSupps().length) {
+    const days = cnt(P.keys, (m) => m.supps > 0);
+    const prevLogged = vals(PP.keys, (m) => m.supps).length;
+    tiles.push(tile({
+      cat: 'supplement', label: '영양제 챙긴 날', value: `${days}일`,
+      delta: deltaEl(days, prevLogged ? cnt(PP.keys, (m) => m.supps > 0) : null, { fmt: (v) => `${fmtNum(v)}일`, eps: 0.5, good: 'up' }),
+      sub: `${elapsed}일 중 ${Math.round((days / elapsed) * 100)}%`,
+    }));
+  }
   if (en.weight) {
     const wv = vals(P.keys, (m) => m.weight);
     const pv = vals(PP.keys, (m) => m.weight);
@@ -174,7 +214,8 @@ export function renderStats(app) {
     const cur = avg(P.keys, (m) => m.mood);
     const n = vals(P.keys, (m) => m.mood).length;
     tiles.push(tile({
-      cat: 'mood', label: '평균 컨디션', value: cur != null ? `${MOODS[Math.round(cur) - 1].emoji} ${fmtNum(cur)}` : '–',
+      cat: 'mood', label: '평균 컨디션',
+      value: cur != null ? h('span', { class: 'tile-face' }, character(me, MOOD_EXPR[Math.round(cur)], { face: true, size: 26 }), fmtNum(cur)) : '–',
       delta: deltaEl(cur, avg(PP.keys, (m) => m.mood), { fmt: (v) => fmtNum(v), eps: 0.05, good: 'up' }),
       sub: n ? `5점 만점 · ${n}일 기록` : '기록 없음',
     }));
@@ -184,6 +225,23 @@ export function renderStats(app) {
   // ---------- 차트 ----------
   const charts = [];
   const dayOrWeek = P.daily ? '날짜' : '주';
+
+  {
+    const data = P.buckets.map((b) => {
+      const v = scoresIn(b.keys);
+      return { ...b, value: v.length ? mean(v) : null };
+    });
+    if (data.some((d) => d.value != null)) {
+      charts.push(chartCard({
+        iconName: 'spark', color: 'var(--accent)', title: '하루 건강 점수', sub: P.daily ? '100점 만점' : '주별 평균 · 100점 만점',
+        chart: () => barChart({
+          data, width: W, color: 'var(--accent)', yMax: 100, step: 25,
+          tipFor: (d) => [['var(--accent)', `${Math.round(d.value)}점`, scoreTier(Math.round(d.value)).label]],
+        }),
+        table: { head: [dayOrWeek, '점수'], rows: data.filter((d) => d.value != null).map((d) => [d.title, `${Math.round(d.value)}점`]) },
+      }));
+    }
+  }
 
   if (en.sleep) {
     const goalH = goals.sleepHours;
@@ -338,17 +396,17 @@ export function renderStats(app) {
       charts.push(chartCard({
         cat: 'mood', title: '컨디션', sub: P.daily ? '5점 만점' : '주별 평균 · 5점 만점',
         chart: () => lineChart({
-          data, width: W, color: 'var(--c-mood)', domain: [1, 5], ticks: [1, 2, 3, 4, 5], padLeft: 34, tickClass: 'tick tick-emoji', yFmt: (v) => MOODS[v - 1].emoji,
-          tipFor: (d) => [['var(--c-mood)', `${MOODS[Math.round(d.value) - 1].emoji} ${fmtNum(d.value)}점`, P.daily ? MOODS[d.value - 1].label : '주 평균']],
+          data, width: W, color: 'var(--c-mood)', domain: [1, 5], ticks: [1, 2, 3, 4, 5], padLeft: 34, tickSvg: (v) => charSVG(me, MOOD_EXPR[v], { face: true }),
+          tipFor: (d) => [['var(--c-mood)', `${fmtNum(d.value)}점`, P.daily ? MOODS[d.value - 1].label : '주 평균']],
         }),
         table: { head: [dayOrWeek, '컨디션'], rows: data.filter((d) => d.value != null).map((d) => [d.title, `${fmtNum(d.value)}점`]) },
       }));
     }
   }
 
-  view.append(...(charts.length ? charts : [h('div', { class: 'card empty' }, h('div', { class: 'big' }, '🗓️'), h('b', null, '이 기간에는 기록이 없어요'), '다른 기간을 보거나 오늘 기록을 남겨 보세요.')]));
+  view.append(...(charts.length ? charts : [h('div', { class: 'card empty' }, character(me, 'sleepy', { size: 84 }), h('b', null, '이 기간에는 기록이 없어요'), '다른 기간을 보거나 오늘 기록을 남겨 보세요.')]));
 
-  view.append(h('h2', { class: 'section-title' }, '발견한 패턴 · 최근 90일'), insightsCard(M, settings, today));
+  view.append(h('h2', { class: 'section-title' }, '발견한 패턴'), insightsCard(M, settings, today, me));
   return view;
 }
 
@@ -358,7 +416,7 @@ function tile({ cat, label, value, sub, delta }) {
   return h(
     'div',
     { class: 'tile', style: { '--cat': `var(--c-${cat})` } },
-    h('div', { class: 'tile-label' }, h('i'), label),
+    h('div', { class: 'tile-label' }, h('span', { class: 'cat-icon' }, icon(cat)), label),
     h('div', { class: 'tile-value' }, value),
     delta,
     sub && h('div', { class: 'tile-sub' }, sub)
@@ -375,7 +433,7 @@ function deltaEl(cur, prev, { fmt, eps, good }) {
   return h('div', { class: 'delta' + cls }, `${up ? '▲' : '▼'} ${fmt(Math.abs(d))}`);
 }
 
-function chartCard({ cat, title, sub, chart, table, legend: legendEl, extra }) {
+function chartCard({ cat, iconName, color, title, sub, chart, table, legend: legendEl, extra }) {
   let asTable = false;
   const body = h('div');
   const btn = h('button', { class: 'mini-toggle', 'aria-label': '차트와 표 전환' });
@@ -387,8 +445,8 @@ function chartCard({ cat, title, sub, chart, table, legend: legendEl, extra }) {
   draw();
   return h(
     'section',
-    { class: 'card chart-card', style: { '--cat': `var(--c-${cat})` } },
-    h('div', { class: 'chart-head' }, h('div', null, h('h3', null, CAT[cat].emoji, ' ', title), sub && h('p', { class: 'card-sub' }, sub)), btn),
+    { class: 'card chart-card', style: { '--cat': color || `var(--c-${cat})` } },
+    h('div', { class: 'chart-head' }, h('span', { class: 'cat-icon' }, icon(iconName || cat)), h('div', null, h('h3', null, title), sub && h('p', { class: 'card-sub' }, sub)), btn),
     body,
     legendEl,
     extra
@@ -409,7 +467,7 @@ function summarizeExercise(list) {
     .join(' · ');
 }
 
-function insightsCard(M, settings, today) {
+function insightsCard(M, settings, today, me) {
   const en = settings.enabled;
   const keys = rangeKeys(addDays(today, -89), today);
   const goal = settings.goals.sleepHours * 60;
@@ -426,7 +484,7 @@ function insightsCard(M, settings, today) {
       if (alc == null || nx > today || M(nx).mood == null) return;
       (alc > 0 ? a : b).push(M(nx).mood);
     });
-    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['🍷', `술 마신 다음 날 컨디션은 평균 ${fmtNum(r[0])}점, 안 마신 다음 날은 ${fmtNum(r[1])}점이에요.`]);
+    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['alcohol', `술 마신 다음 날 컨디션은 평균 ${fmtNum(r[0])}점, 안 마신 다음 날은 ${fmtNum(r[1])}점이에요.`]);
   }
   if (en.alcohol && en.sleep) {
     const r = split((k, a, b) => {
@@ -435,7 +493,7 @@ function insightsCard(M, settings, today) {
       (alc > 0 ? a : b).push(M(nx).sleep);
     });
     if (r && Math.abs(r[0] - r[1]) >= 15) {
-      items.push(['🌙', `술 마신 날 밤에는 평균 ${fmtDuration(r[0])} 잤어요. 안 마신 날보다 ${fmtDuration(Math.abs(r[0] - r[1]))} ${r[0] < r[1] ? '적게' : '더'} 잤어요.`]);
+      items.push(['sleep', `술 마신 날 밤에는 평균 ${fmtDuration(r[0])} 잤어요. 안 마신 날보다 ${fmtDuration(Math.abs(r[0] - r[1]))} ${r[0] < r[1] ? '적게' : '더'} 잤어요.`]);
     }
   }
   if (en.exercise && en.mood) {
@@ -444,7 +502,7 @@ function insightsCard(M, settings, today) {
       if (m.mood == null) return;
       (m.ex > 0 ? a : b).push(m.mood);
     });
-    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['🏃', `운동한 날 컨디션은 평균 ${fmtNum(r[0])}점으로, 안 한 날(${fmtNum(r[1])}점)보다 ${r[0] > r[1] ? '좋아요' : '낮아요'}.`]);
+    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['exercise', `운동한 날 컨디션은 평균 ${fmtNum(r[0])}점으로, 안 한 날(${fmtNum(r[1])}점)보다 ${r[0] > r[1] ? '좋아요' : '낮아요'}.`]);
   }
   if (en.sleep && en.mood) {
     const r = split((k, a, b) => {
@@ -452,7 +510,7 @@ function insightsCard(M, settings, today) {
       if (m.mood == null || m.sleep == null) return;
       (m.sleep >= goal ? a : b).push(m.mood);
     });
-    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['😴', `${fmtDuration(goal)} 이상 잔 날 컨디션은 ${fmtNum(r[0])}점, 덜 잔 날은 ${fmtNum(r[1])}점이에요.`]);
+    if (r && Math.abs(r[0] - r[1]) >= 0.3) items.push(['mood', `${fmtDuration(goal)} 이상 잔 날 컨디션은 ${fmtNum(r[0])}점, 덜 잔 날은 ${fmtNum(r[1])}점이에요.`]);
   }
 
   const facts = [h('div', { class: 'fact' }, h('b', null, `${streak(today, anyLogged)}일`), h('small', null, '연속 기록'))];
@@ -473,9 +531,15 @@ function insightsCard(M, settings, today) {
   return h(
     'section',
     { class: 'card' },
+    h(
+      'div',
+      { class: 'insight-head' },
+      character(me, items.length ? 'wow' : 'good'),
+      h('div', null, h('h3', null, `${CHARACTERS[me].short}가 찾은 패턴`), h('p', null, '최근 90일 기록을 살펴봤어요'))
+    ),
     h('div', { class: 'facts', style: { 'grid-template-columns': `repeat(${facts.length}, 1fr)` } }, facts),
     items.length
-      ? items.map(([e, t]) => h('div', { class: 'insight' }, h('span', null, e), h('p', null, t)))
-      : h('p', { class: 'card-note', style: { 'margin-top': '12px' } }, '기록이 더 쌓이면 수면·음주·운동과 컨디션 사이의 패턴을 찾아서 알려 드릴게요.')
+      ? items.map(([cat, t]) => h('div', { class: 'insight', style: { '--cat': `var(--c-${cat})` } }, h('span', { class: 'cat-icon sm' }, icon(cat)), h('p', null, t)))
+      : h('p', { class: 'card-note', style: { 'margin-top': '14px' } }, '기록이 더 쌓이면 수면·음주·운동과 컨디션 사이의 패턴을 찾아서 알려 드릴게요.')
   );
 }

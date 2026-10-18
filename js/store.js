@@ -7,14 +7,17 @@
 //   exercise: [{ type: 'run', minutes: 30, intensity: 2, memo: '' }],
 //   exerciseRest: true,
 //   alcohol: { soju: 3, beer: 1 },  alcoholNone: true,
-//   water: 6, weight: 62.3, mood: 4, memo: '한 줄 일기',
+//   water: 6, supps: ['k3f9a1'], weight: 62.3, mood: 4, memo: '한 줄 일기',
 // }
 
 const KEY = 'carejh:data:v1';
 
 export const DEFAULT_SETTINGS = {
   name: '',
-  enabled: { sleep: true, meal: true, exercise: true, alcohol: true, water: true, weight: true, mood: true },
+  character: null, // 'lion' | 'alpaca' — 처음 실행할 때 고릅니다
+  enabled: { sleep: true, meal: true, exercise: true, alcohol: true, water: true, supplement: true, weight: true, mood: true },
+  // 먹는 영양제 목록. 목록에서 빼도 지난 기록의 이름이 남도록 archived로 숨깁니다.
+  supplements: [], // [{ id, name, archived? }]
   goals: { sleepHours: 7, waterCups: 8, exerciseWeekMin: 150, alcoholDaysWeek: 2 },
   theme: 'system',
   lastBackupAt: null,
@@ -41,6 +44,7 @@ function normalize(raw) {
     ...s,
     enabled: { ...d.settings.enabled, ...(isObj(s.enabled) ? s.enabled : {}) },
     goals: { ...d.settings.goals, ...(isObj(s.goals) ? s.goals : {}) },
+    supplements: Array.isArray(s.supplements) ? s.supplements.filter((x) => isObj(x) && typeof x.id === 'string' && typeof x.name === 'string') : [],
   };
   return d;
 }
@@ -147,7 +151,11 @@ export function parseBackup(text) {
 export function importBackup(backup) {
   const wasEmpty = dayCount() === 0;
   data.days = { ...data.days, ...backup.days };
-  if (wasEmpty) data.settings = { ...backup.settings };
+  if (wasEmpty) {
+    // 새 폰에서 불러올 때는 백업의 설정을 쓰되, 백업에 없는 캐릭터/이름은 지금 고른 것을 유지
+    const cur = data.settings;
+    data.settings = { ...backup.settings, character: backup.settings.character || cur.character, name: backup.settings.name || cur.name };
+  }
   save();
   emit();
   return Object.keys(backup.days).length;

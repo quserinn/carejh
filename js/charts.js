@@ -198,7 +198,7 @@ export function rangeChart({ data, width, height = 200, color, tipFor, clock }) 
 
 // ---------- line chart ----------
 // data: [{ label, showLabel, title, value }]
-export function lineChart({ data, width, height = 160, color, domain, ticks, yFmt = String, tipFor, padLeft = 34, tickClass = 'tick' }) {
+export function lineChart({ data, width, height = 160, color, domain, ticks, yFmt = String, tipFor, padLeft = 34, tickSvg }) {
   const P = { t: 12, r: 10, b: 22, l: padLeft };
   const iw = width - P.l - P.r, ih = height - P.t - P.b;
   const vals = data.map((d) => d.value).filter((v) => v != null);
@@ -220,7 +220,12 @@ export function lineChart({ data, width, height = 160, color, domain, ticks, yFm
 
   ticks.forEach((t) => {
     svg.append(s('line', { x1: P.l, x2: width - P.r, y1: y(t), y2: y(t), class: 'grid' }));
-    svg.append(text(P.l - 6, y(t) + 4, yFmt(t), { class: tickClass, 'text-anchor': 'end' }));
+    if (tickSvg) {
+      // 눈금 대신 그림(캐릭터 얼굴 등)을 그릴 때
+      const g = s('g');
+      g.innerHTML = tickSvg(t).replace('<svg ', `<svg x="${P.l - 26}" y="${y(t) - 10}" width="20" height="20" `);
+      svg.append(g);
+    } else svg.append(text(P.l - 6, y(t) + 4, yFmt(t), { class: 'tick', 'text-anchor': 'end' }));
   });
   data.forEach((d, i) => { if (d.showLabel !== false) svg.append(text(x(i), height - 6, d.label, { class: 'tick', 'text-anchor': 'middle' })); });
 
@@ -309,7 +314,7 @@ export function hbarList(items) {
       h(
         'div',
         { class: 'hbar' },
-        h('div', { class: 'hbar-top' }, h('span', null, `${it.emoji} ${it.label}`), h('span', null, it.display)),
+        h('div', { class: 'hbar-top' }, h('span', null, it.label), h('span', null, it.display)),
         h('div', { class: 'hbar-track' }, h('i', { style: { width: `${(it.value / max) * 100}%` } }))
       )
     )

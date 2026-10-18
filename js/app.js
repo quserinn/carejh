@@ -5,6 +5,7 @@ import { renderToday } from './views/today.js';
 import { renderCalendar } from './views/calendar.js';
 import { renderStats } from './views/stats.js';
 import { renderSettings } from './views/settings.js';
+import { renderOnboarding } from './views/onboarding.js';
 
 const TABS = [
   { key: 'today', label: '기록', icon: 'edit', render: renderToday },
@@ -33,11 +34,12 @@ const app = {
 
   render({ keepScroll = false, animate = false } = {}) {
     const y = window.scrollY;
+    const onboarding = !store.getSettings().character;
     const tab = TABS.find((t) => t.key === this.state.tab);
-    const view = tab.render(this);
+    const view = onboarding ? renderOnboarding(this) : tab.render(this);
     if (animate) view.classList.add('enter');
     document.getElementById('app').replaceChildren(view);
-    renderTabbar();
+    renderTabbar(onboarding);
     window.scrollTo(0, keepScroll ? y : 0);
   },
 
@@ -57,8 +59,9 @@ const app = {
   },
 };
 
-function renderTabbar() {
+function renderTabbar(hidden) {
   const nav = document.getElementById('tabbar');
+  if (hidden) return nav.replaceChildren();
   nav.replaceChildren(
     h(
       'div',
@@ -76,7 +79,8 @@ function renderTabbar() {
 }
 
 function applyTheme() {
-  const theme = store.getSettings().theme;
+  const { theme, character } = store.getSettings();
+  document.documentElement.dataset.char = character || app.state.obPick || 'lion';
   if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
   const meta = document.querySelector('meta[name="theme-color"]');

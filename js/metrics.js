@@ -1,4 +1,4 @@
-import { getDay } from './store.js';
+import { getDay, getSettings } from './store.js';
 import { addDays, pad2, fmtDuration, fmtNum } from './util.js';
 import {
   DRINKS, DRINK, SOJU_GLASS_G, EXERCISE, MEALS, MEAL_RATING, MOODS, SLEEP_Q, CUP_ML, INTENSITY,
@@ -52,6 +52,7 @@ export function isLogged(cat, day) {
     case 'exercise': return exerciseMinutes(day) != null;
     case 'alcohol': return drinkStatus(day) != null;
     case 'water': return day.water > 0;
+    case 'supplement': return (day.supps || []).length > 0;
     case 'weight': return day.weight != null;
     case 'mood': return day.mood != null;
     default: return false;
@@ -59,6 +60,9 @@ export function isLogged(cat, day) {
 }
 
 export const anyLogged = (day) => Object.keys(day).length > 0;
+
+// 지금 먹고 있는(목록에서 빼지 않은) 영양제
+export const activeSupps = () => (getSettings().supplements || []).filter((s) => !s.archived);
 
 // date 이전(당일 제외)에서 조건에 맞는 가장 최근 날
 export function findLast(date, pred, maxBack = 400) {
@@ -97,6 +101,7 @@ export function dayMetrics(day) {
     alc: drinkStatus(day),
     drinks: day.alcohol || {},
     water: day.water > 0 ? day.water : null,
+    supps: (day.supps || []).length || null,
     weight: day.weight ?? null,
     mood: day.mood ?? null,
   };
@@ -139,11 +144,16 @@ export function summarize(cat, day) {
     }
     case 'water':
       return `${day.water}잔 (${fmtNum((day.water * CUP_ML) / 1000, 2)}L)`;
+    case 'supplement': {
+      const all = getSettings().supplements || [];
+      const names = day.supps.map((id) => all.find((s) => s.id === id)?.name).filter(Boolean);
+      return names.join(', ') || `${day.supps.length}개`;
+    }
     case 'weight':
       return `${day.weight.toFixed(1)}kg`;
     case 'mood': {
       const m = MOODS.find((o) => o.key === day.mood);
-      return [m ? `${m.emoji} ${m.label}` : null, day.memo].filter(Boolean).join('\n');
+      return [m ? `${m.label} (${m.key}점)` : null, day.memo].filter(Boolean).join('\n');
     }
   }
   return null;
