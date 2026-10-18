@@ -9,7 +9,6 @@ import { icon } from '../icons.js';
 function scoreRing(score) {
   const span = h('span', { class: 'score-ring' });
   span.innerHTML = scoreRingSVG(score);
-  span.append(h('b', null, score));
   return span;
 }
 

@@ -85,9 +85,17 @@ export function scoreTier(score) {
   return { label: '힘든 하루', expr: 'bad' };
 }
 
-// 점수를 숫자로 감싼 작은 고리
-export function scoreRingSVG(score, size = 28) {
-  const r = size / 2 - 2.5;
+// 점수를 숫자로 감싼 작은 고리. 숫자도 SVG 안에 그려서 글자 크기 설정과 상관없이 고리 안에 들어가게 합니다.
+export function scoreRingSVG(score, size = 30) {
+  const c = size / 2;
+  const r = c - 2;
   const C = 2 * Math.PI * r;
-  return `<svg viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle class="track" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="3"/><circle class="bar" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - score / 100)}"/></svg>`;
+  const fs = score >= 100 ? 9 : 11;
+  return (
+    `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true">` +
+    `<circle class="track" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="2.6"/>` +
+    `<circle class="bar" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - score / 100)}" transform="rotate(-90 ${c} ${c})"/>` +
+    `<text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="800">${score}</text>` +
+    `</svg>`
+  );
 }

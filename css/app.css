@@ -605,12 +605,12 @@ input, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center;
   font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.cal-mark { width: 28px; height: 28px; display: grid; place-items: center; }
-.score-ring { position: relative; width: 28px; height: 28px; display: inline-grid; place-items: center; flex: none; }
-.score-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.cal-mark { width: 30px; height: 30px; display: grid; place-items: center; }
+.score-ring { display: inline-flex; width: 30px; height: 30px; flex: none; }
+.score-ring svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .score-ring .track { stroke: var(--surface-3); }
 .score-ring .bar { stroke: var(--accent); }
-.score-ring b { position: relative; font-size: 10.5px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.score-ring text { fill: var(--ink); font-family: inherit; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .cal-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--axis); }
 .cal-cell.today .cal-num { background: var(--accent-soft); color: var(--accent-ink); }
 .cal-cell.sel .cal-num { background: var(--ink); color: var(--surface); }
