@@ -1,9 +1,11 @@
 import {
-  h, todayKey, addDays, diffDays, parseKey, fmtDuration, fmtNum, fmtMD, mondayOf, rangeKeys, debounce, autoGrow, toast, WD,
+  h, todayKey, addDays, diffDays, parseKey, fmtDuration, fmtNum, fmtMD, mondayOf, rangeKeys, debounce, autoGrow, toast, pad2, WD,
 } from '../util.js';
 import * as store from '../store.js';
-import { CATS, CAT, SLEEP_Q, MEALS, MAIN_MEALS, MEAL_RATINGS, EXERCISES, EXERCISE, INTENSITY, DRINKS, MOODS, CUP_ML, SUPP_SUGGESTIONS } from '../constants.js';
-import { sleepMinutes, alcoholGrams, sojuGlasses, isLogged, anyLogged, findLast, exerciseMinutes, activeSupps } from '../metrics.js';
+import { CATS, CAT, SLEEP_Q, MEALS, MAIN_MEALS, MEAL_RATINGS, EXERCISES, EXERCISE, INTENSITY, DRINKS, MOODS, CUP_ML, SUPP_SUGGESTIONS, CAFFEINE } from '../constants.js';
+import {
+  sleepMinutes, alcoholGrams, sojuGlasses, caffeineMg, isLateTime, napCredit, isLogged, anyLogged, findLast, exerciseMinutes, activeSupps,
+} from '../metrics.js';
 import { character, MOOD_EXPR, SLEEP_EXPR } from '../characters.js';
 import { openSheet } from '../sheet.js';
 import { icon } from '../icons.js';
@@ -13,6 +15,7 @@ const CARDS = {
   meal: mealCard,
   exercise: exerciseCard,
   alcohol: alcoholCard,
+  caffeine: caffeineCard,
   water: waterCard,
   supplement: supplementCard,
   weight: weightCard,
@@ -136,6 +139,7 @@ function heroLine(ctx, cats, done) {
   }
   if (done === total) return ['cheer', `${you}오늘 기록 다 했어! 최고야.`];
   if (has('alcohol') && glasses >= 7) return ['dizzy', '오늘 꽤 마셨네… 자기 전에 물 한 잔 꼭 마시자.'];
+  if (has('caffeine') && caffeineMg(day.caffeine) > settings.goals.caffeineMg) return ['dizzy', '카페인을 너무 많이 마셨어. 오늘은 물 마시자!'];
   if (has('mood') && day.mood && day.mood <= 2) return ['meh', '오늘 좀 힘들었구나. 일찍 푹 자자.'];
   if (hr >= 23 || hr < 4) return ['sleepy', `${you}늦었어. 기록하고 얼른 자자.`];
   if (has('sleep') && !isLogged('sleep', day) && hr < 12) return ['sleepy', `${you}좋은 아침! 어젯밤엔 몇 시에 잤어?`];
@@ -168,7 +172,7 @@ function hero(ctx, cats) {
       h(
         'div',
         { class: 'hero-meta' },
-        h('div', { class: 'cat-dots' }, cats.map((c) => h('span', { class: 'cd' + (isLogged(c.key, day) ? ' on' : ''), style: { '--cat': `var(--c-${c.key})` }, title: c.label }, icon(c.key))))
+        h('div', { class: 'cat-dots', style: { '--n': cats.length } }, cats.map((c) => h('span', { class: 'cd' + (isLogged(c.key, day) ? ' on' : ''), style: { '--cat': `var(--c-${c.key})` }, title: c.label }, icon(c.key))))
       )
     )
   );
@@ -262,17 +266,27 @@ function weekKeys(date) {
 function sleepCard(ctx) {
   const { day, date, settings, me } = ctx;
   const sl = day.sleep || {};
+  const nap = day.nap || 0;
   const goal = settings.goals.sleepHours * 60;
   const valB = h('b');
   const valS = h('small');
   const inputs = {};
 
+  // 위쪽 숫자는 밤잠 + 낮잠. 목표는 밤잠 + 낮잠(90분까지)으로 봅니다
   const refresh = () => {
     const m = sleepMinutes({ bed: inputs.bed.value, wake: inputs.wake.value });
-    valB.textContent = m != null ? fmtDuration(m) : '';
-    valS.textContent = m == null ? '' : m >= goal ? '목표 달성' : `목표까지 ${fmtDuration(goal - m)}`;
-    valS.className = m != null && m >= goal ? 'ok' : '';
+    if (m == null) {
+      valB.textContent = nap ? `낮잠 ${fmtDuration(nap)}` : '';
+      valS.textContent = '';
+      valS.className = '';
+      return;
+    }
+    const enough = m + napCredit(day) >= goal;
+    valB.textContent = fmtDuration(m + nap);
+    valS.textContent = [nap ? `낮잠 ${fmtDuration(nap)} 포함` : null, enough ? '목표 달성' : `목표까지 ${fmtDuration(goal - m - napCredit(day))}`].filter(Boolean).join(' · ');
+    valS.className = enough ? 'ok' : '';
   };
+  const setNap = (v) => ctx.save((d) => { d.nap = v > 0 ? Math.min(v, 300) : null; });
 
   // 기기 언어에 따라 '오후 11:40'처럼 길게 나오는 걸 막으려고, 24시간 표기를 직접 보여주고
   // 투명한 기본 시간 입력창을 위에 덮어서 탭하면 휴대폰의 시간 선택기가 열리게 합니다.
@@ -317,6 +331,13 @@ function sleepCard(ctx) {
           })
         )
       )
+    ),
+    h(
+      'div',
+      { class: 'nap-row' + (nap ? ' on' : '') },
+      h('span', { class: 'nap-label' }, icon('sun'), '낮잠'),
+      h('span', { class: 'nap-hint' }, nap ? '' : '10분 단위'),
+      stepper({ label: '낮잠', display: nap ? fmtDuration(nap) : '없음', minusDisabled: !nap, onMinus: () => setNap(nap - 10), onPlus: () => setNap(nap + 10) })
     )
   );
   refresh();
@@ -543,6 +564,88 @@ function soberText(date) {
   const last = findLast(date, (d) => alcoholGrams(d.alcohol) > 0);
   if (!last) return null;
   return `마지막으로 마신 날: ${fmtMD(last.key)} (${diffDays(last.key, date)}일 전)`;
+}
+
+// ---------- 카페인 ----------
+
+function caffeineCard(ctx) {
+  const { app, day, date, settings, me } = ctx;
+  const c = day.caffeine || {};
+  const mg = caffeineMg(c);
+  const limit = settings.goals.caffeineMg;
+  const open = mg > 0 || app.state.caffeineOpen === date;
+
+  const add = (key, n) =>
+    ctx.save((d) => {
+      const cf = { ...(d.caffeine || {}) };
+      cf[key] = Math.max(0, (cf[key] || 0) + n);
+      d.caffeine = cf;
+      d.caffeineNone = null;
+      // 오늘 기록할 때는 마신 시각을 자동으로 남겨서, 늦은 카페인이 잠에 주는 영향을 볼 수 있게 함
+      if (n > 0 && date === todayKey()) {
+        const now = new Date();
+        d.caffeineLast = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+      }
+      if (!Object.values(cf).some((v) => v > 0)) d.caffeineLast = null;
+    });
+
+  if (day.caffeineNone) {
+    return card(
+      'caffeine',
+      { value: valueBox('안 마심') },
+      h(
+        'div',
+        { class: 'react' },
+        character(me, 'proud', { face: true }),
+        h('div', { class: 'react-text' }, h('b', null, '오늘은 카페인 없이!'), h('br'), '잠도 더 푹 잘 수 있을 거예요.'),
+        h('button', { class: 'text-btn', onclick: () => ctx.save((d) => { d.caffeineNone = null; }) }, '취소')
+      )
+    );
+  }
+
+  if (!open) {
+    return card(
+      'caffeine',
+      { value: valueBox() },
+      h(
+        'div',
+        { class: 'big-choices' },
+        h('button', { class: 'big-choice', onclick: () => { app.state.caffeineOpen = date; app.render({ keepScroll: true }); } }, icon('caffeine'), '마셨어요'),
+        h('button', { class: 'big-choice', onclick: () => ctx.save((d) => { d.caffeineNone = true; d.caffeine = null; d.caffeineLast = null; }) }, character(me, 'proud', { face: true }), '안 마셨어요')
+      )
+    );
+  }
+
+  const rows = CAFFEINE.map((cd) => {
+    const n = c[cd.key] || 0;
+    return h(
+      'div',
+      { class: 'drink-row' + (n ? ' has' : '') },
+      h('div', { class: 'drink-main' }, h('b', null, cd.label), h('small', null, cd.note)),
+      stepper({ label: cd.label, display: n ? `${n}${cd.unit}` : '0', minusDisabled: !n, onMinus: () => add(cd.key, -1), onPlus: () => add(cd.key, 1) })
+    );
+  });
+
+  let react = null;
+  if (mg > 0) {
+    const [expr, line] = mg > limit ? ['dizzy', '하루 권장량을 넘었어요. 오늘은 그만!'] : mg > limit * 0.6 ? ['ok', '오늘은 이 정도만 마셔요.'] : ['good', '적당해요.'];
+    react = h(
+      'div',
+      { class: 'react' },
+      character(me, expr, { face: true }),
+      h(
+        'div',
+        { class: 'react-text' },
+        h('b', null, `카페인 약 ${mg}mg`), ` / 하루 ${limit}mg`,
+        h('div', { class: 'meter', style: { margin: '7px 0 6px' } }, h('i', { style: { width: `${Math.min(100, (mg / limit) * 100)}%` } })),
+        line
+      )
+    );
+  }
+  const last = day.caffeineLast;
+  const lastNote = mg > 0 && last ? h('div', { class: 'card-note' }, `마지막 카페인 ${last}${isLateTime(last) ? ' · 오후 3시 넘어 마시면 잠들기 어려울 수 있어요' : ''}`) : null;
+
+  return card('caffeine', { value: valueBox(mg > 0 ? `${mg}mg` : '', mg > 0 ? `권장량의 ${Math.round((mg / limit) * 100)}%` : '') }, h('div', { class: 'drink-list' }, rows), react, lastNote);
 }
 
 // ---------- 물 ----------

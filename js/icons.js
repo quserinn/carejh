@@ -16,6 +16,7 @@ const PATHS = {
   water: `<path ${S} d="M12 3.5s6.2 6.6 6.2 11.1a6.2 6.2 0 0 1-12.4 0C5.8 10.1 12 3.5 12 3.5z"/>`,
   weight: `<g ${S}><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8.2 10a5 5 0 0 1 7.6 0"/><path d="M12 10.5l1.4-2"/></g>`,
   mood: `<g ${S}><circle cx="12" cy="12" r="8.5"/><path d="M8.6 14.2a4.4 4.4 0 0 0 6.8 0"/></g><g fill="currentColor"><circle cx="9.2" cy="10" r="1.15"/><circle cx="14.8" cy="10" r="1.15"/></g>`,
+  caffeine: `<g ${S}><path d="M4.5 9.5h12v4a5.2 5.2 0 0 1-5.2 5.2H9.7a5.2 5.2 0 0 1-5.2-5.2z"/><path d="M16.5 10.8h1.2a2.6 2.6 0 0 1 0 5.2h-1.5"/><path d="M8.6 3.6c-.9 1.1.9 1.9 0 3.1M12.4 3.6c-.9 1.1.9 1.9 0 3.1"/><path d="M4 21.2h13"/></g>`,
   supplement: `<g ${S} transform="rotate(-40 12 12)"><rect x="3" y="8.4" width="18" height="7.2" rx="3.6"/><path d="M12 8.4v7.2"/></g>`,
   sun: `<g ${S}><circle cx="12" cy="12" r="4"/><path d="M12 2.8v1.9M12 19.3v1.9M2.8 12h1.9M19.3 12h1.9M5.5 5.5l1.3 1.3M17.2 17.2l1.3 1.3M5.5 18.5l1.3-1.3M17.2 6.8l1.3-1.3"/></g>`,
 

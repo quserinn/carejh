@@ -1,14 +1,15 @@
 // 하루 건강 점수 (100점 만점)
 // 항목별 배점을 더하되, 그날 기록한 항목만으로 계산해서 100점으로 환산합니다.
 // 배점의 절반 이상을 기록한 날만 점수를 매깁니다. 체중과 컨디션은 점수에 넣지 않아요.
-import { sleepMinutes, alcoholGrams, sojuGlasses, exerciseMinutes, activeSupps } from './metrics.js';
+import { sleepMinutes, alcoholGrams, sojuGlasses, exerciseMinutes, activeSupps, caffeineMg, isLateTime, napCredit } from './metrics.js';
 import { clamp } from './util.js';
 
 export const SCORE_PARTS = [
-  { key: 'sleep', max: 25, rule: '목표 시간만큼 자면 만점이고, 모자랄수록 깎여요. 개운했는지도 반영해요.' },
+  { key: 'sleep', max: 25, rule: '목표 시간만큼 자면 만점이고, 모자랄수록 깎여요. 낮잠은 90분까지 더해 주고, 개운했는지도 반영해요.' },
   { key: 'meal', max: 25, rule: '건강하게 먹을수록 높아요. 과식하거나 끼니를 거르면 낮아져요.' },
   { key: 'exercise', max: 20, rule: '30분 넘게 운동하면 만점. 쉬는 날도 조금은 쳐 줘요.' },
   { key: 'alcohol', max: 15, rule: '안 마시면 만점, 마실수록 깎여요. 소주 5잔이 넘으면 마이너스예요.' },
+  { key: 'caffeine', max: 5, rule: '하루 권장량 안이면 만점, 넘으면 깎여요. 오후 3시 넘어 마시면 조금 감점.' },
   { key: 'water', max: 10, rule: '목표한 만큼 마시면 만점.' },
   { key: 'supplement', max: 5, rule: '등록한 영양제를 다 챙기면 만점.' },
 ];
@@ -20,8 +21,9 @@ const UNLOGGED_MEAL = 4; // 아직 안 적은 끼니는 중간쯤으로
 function partScore(key, day, s) {
   switch (key) {
     case 'sleep': {
-      const m = sleepMinutes(day.sleep);
-      if (m == null) return null;
+      const night = sleepMinutes(day.sleep);
+      if (night == null) return null;
+      const m = night + napCredit(day);
       const goal = s.goals.sleepHours * 60;
       let pts;
       if (m < goal) pts = 20 * Math.max(0, 1 - (goal - m) / 180); // 3시간 모자라면 0
@@ -47,6 +49,14 @@ function partScore(key, day, s) {
       if (g === 0 && !day.alcoholNone) return null;
       const glasses = sojuGlasses(g);
       return glasses <= 5 ? 15 - 3 * glasses : Math.max(-10, -2 * (glasses - 5));
+    }
+    case 'caffeine': {
+      const mg = caffeineMg(day.caffeine);
+      if (mg === 0 && !day.caffeineNone) return null;
+      const limit = s.goals.caffeineMg;
+      let pts = mg <= limit ? 5 : Math.max(0, 5 - ((mg - limit) / 100) * 2.5);
+      if (mg > 0 && isLateTime(day.caffeineLast)) pts -= 1.5;
+      return Math.max(0, pts);
     }
     case 'water':
       return day.water > 0 ? Math.min(1, day.water / s.goals.waterCups) * 10 : null;

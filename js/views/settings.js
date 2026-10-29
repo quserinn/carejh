@@ -100,9 +100,10 @@ export function renderSettings(app) {
       goal('sleep', '하루 수면', 'sleepHours', s.goals.sleepHours, `${fmtNum(s.goals.sleepHours)}시간`, 0.5, 4, 12),
       goal('water', '하루 물', 'waterCups', s.goals.waterCups, `${s.goals.waterCups}잔`, 1, 1, 20),
       goal('exercise', '주간 운동', 'exerciseWeekMin', s.goals.exerciseWeekMin, `${s.goals.exerciseWeekMin}분`, 10, 0, 1500),
-      goal('alcohol', '술 마시는 날', 'alcoholDaysWeek', s.goals.alcoholDaysWeek, `주 ${s.goals.alcoholDaysWeek}일`, 1, 0, 7)
+      goal('alcohol', '술 마시는 날', 'alcoholDaysWeek', s.goals.alcoholDaysWeek, `주 ${s.goals.alcoholDaysWeek}일`, 1, 0, 7),
+      goal('caffeine', '하루 카페인', 'caffeineMg', s.goals.caffeineMg, `${s.goals.caffeineMg}mg`, 50, 100, 800)
     ),
-    h('p', { class: 'set-note' }, '세계보건기구는 일주일에 150분 이상 운동하기를 권해요.'),
+    h('p', { class: 'set-note' }, '세계보건기구는 일주일에 150분 이상 운동을, 식약처는 성인 카페인을 하루 400mg 이하로 권해요.'),
 
     h('h2', { class: 'section-title' }, '기록할 항목'),
     h(

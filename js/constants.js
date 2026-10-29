@@ -4,6 +4,7 @@ export const CATS = [
   { key: 'meal', label: '식사', emoji: '🍚' },
   { key: 'exercise', label: '운동', emoji: '🏃' },
   { key: 'alcohol', label: '음주', emoji: '🍷' },
+  { key: 'caffeine', label: '카페인', emoji: '☕' },
   { key: 'water', label: '물', emoji: '💧' },
   { key: 'supplement', label: '영양제', emoji: '💊' },
   { key: 'weight', label: '체중', emoji: '⚖️' },
@@ -67,6 +68,18 @@ export const DRINKS = [
 ];
 export const DRINK = Object.fromEntries(DRINKS.map((d) => [d.key, d]));
 export const SOJU_GLASS_G = 6.5;
+
+// 한 잔에 든 카페인(mg). 카페마다 달라서 흔한 크기 기준 대략값입니다.
+export const CAFFEINE = [
+  { key: 'americano', label: '아메리카노', unit: '잔', mg: 150, note: '2샷 · 약 150mg' },
+  { key: 'latte', label: '라떼·카푸치노', unit: '잔', mg: 150, note: '2샷 · 약 150mg' },
+  { key: 'coldbrew', label: '콜드브루', unit: '잔', mg: 200, note: '약 200mg' },
+  { key: 'mix', label: '믹스커피', unit: '봉', mg: 60, note: '약 60mg' },
+  { key: 'tea', label: '녹차·홍차', unit: '잔', mg: 40, note: '약 40mg' },
+  { key: 'energy', label: '에너지음료', unit: '캔', mg: 80, note: '약 80mg' },
+  { key: 'cola', label: '콜라', unit: '캔', mg: 30, note: '약 30mg' },
+];
+export const CAFFEINE_DRINK = Object.fromEntries(CAFFEINE.map((c) => [c.key, c]));
 
 export const MOODS = [
   { key: 1, emoji: '😫', label: '최악' },

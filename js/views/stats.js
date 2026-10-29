@@ -2,8 +2,8 @@ import {
   h, todayKey, addDays, diffDays, rangeKeys, mondayOf, fmtMD, fmtDayTitle, fmtDuration, fmtNum, mean, sum, WD, keyOf, pad2, parseKey,
 } from '../util.js';
 import * as store from '../store.js';
-import { MEALS, MEAL_RATING, EXERCISES, EXERCISE, DRINKS, MOODS, CUP_ML } from '../constants.js';
-import { dayMetrics, clockOfRel, sojuGlasses, drinkList, streak, anyLogged, activeSupps } from '../metrics.js';
+import { MEALS, MEAL_RATING, EXERCISES, EXERCISE, DRINKS, MOODS, CUP_ML, CAFFEINE } from '../constants.js';
+import { dayMetrics, clockOfRel, sojuGlasses, drinkList, caffeineList, streak, anyLogged, activeSupps } from '../metrics.js';
 import { dayScore, scoreTier } from '../score.js';
 import { barChart, rangeChart, lineChart, mealMatrix, hbarList, tableView } from '../charts.js';
 import { icon } from '../icons.js';
@@ -146,7 +146,9 @@ export function renderStats(app) {
     tiles.push(tile({
       cat: 'sleep', label: '평균 수면', value: fmtDuration(cur),
       delta: deltaEl(cur, avg(PP.keys, (m) => m.sleep), { fmt: fmtDuration, eps: 1 }),
-      sub: n ? `목표 달성 ${cnt(P.keys, (m) => m.sleep >= goal && m.sleep != null)}/${n}일` : '기록 없음',
+      sub: n
+        ? `목표 달성 ${cnt(P.keys, (m) => m.night != null && m.night + Math.min(m.nap || 0, 90) >= goal)}/${n}일${cnt(P.keys, (m) => m.nap) ? ` · 낮잠 ${cnt(P.keys, (m) => m.nap)}번` : ''}`
+        : '기록 없음',
     }));
   }
   if (en.exercise) {
@@ -180,6 +182,14 @@ export function renderStats(app) {
       cat: 'meal', label: '건강하게 먹은 끼니', value: cur != null ? `${Math.round(cur)}%` : '–',
       delta: deltaEl(cur, ratio(PP.keys), { fmt: (v) => `${Math.round(v)}%p`, eps: 0.5, good: 'up' }),
       sub: cur != null ? `아침 거른 날 ${bSkip}일 · 간식·야식 ${snacks}번` : '기록 없음',
+    }));
+  }
+  if (en.caffeine) {
+    const cur = avg(P.keys, (m) => m.caf);
+    tiles.push(tile({
+      cat: 'caffeine', label: '하루 평균 카페인', value: cur != null ? `${Math.round(cur)}mg` : '–',
+      delta: deltaEl(cur, avg(PP.keys, (m) => m.caf), { fmt: (v) => `${Math.round(v)}mg`, eps: 5, good: 'down' }),
+      sub: cur != null ? `${goals.caffeineMg}mg 넘은 날 ${cnt(P.keys, (m) => m.caf > goals.caffeineMg)}일 · 늦게 마신 날 ${cnt(P.keys, (m) => m.cafLate)}일` : '기록 없음',
     }));
   }
   if (en.water) {
@@ -247,14 +257,14 @@ export function renderStats(app) {
     const goalH = goals.sleepHours;
     const data = P.buckets.map((b) => {
       const v = avg(b.keys, (m) => m.sleep);
-      return { ...b, value: v != null ? v / 60 : null };
+      return { ...b, value: v != null ? v / 60 : null, nap: avg(b.keys, (m) => (m.night != null ? m.nap || 0 : null)) };
     });
     if (data.some((d) => d.value != null)) {
       charts.push(chartCard({
         cat: 'sleep', title: '수면 시간', sub: `${P.daily ? '하루 수면 시간' : '주별 하루 평균'} · 가로선은 목표 ${fmtNum(goalH)}시간`,
         chart: () => barChart({
           data, width: W, color: 'var(--c-sleep)', goal: goalH, step: 2, yFmt: (v) => `${v}h`,
-          tipFor: (d) => [['var(--c-sleep)', fmtDuration(d.value * 60), P.daily ? '수면' : '하루 평균']],
+          tipFor: (d) => [['var(--c-sleep)', fmtDuration(d.value * 60), d.nap ? `낮잠 ${fmtDuration(d.nap)} 포함` : P.daily ? '수면' : '하루 평균']],
         }),
         table: { head: [dayOrWeek, '수면'], rows: data.filter((d) => d.value != null).map((d) => [d.title, fmtDuration(d.value * 60)]) },
       }));
@@ -320,6 +330,32 @@ export function renderStats(app) {
         }),
         extra: items.length ? hbarList(items) : null,
         table: { head: [dayOrWeek, '소주 환산', '마신 술'], rows: data.filter((d) => d.value != null).map((d) => [d.title, d.value ? `${fmtNum(d.value)}잔` : '0', drinkList(d.drinks).join(', ') || '안 마심']) },
+      }));
+    }
+  }
+
+  if (en.caffeine) {
+    const limit = goals.caffeineMg;
+    const data = P.buckets.map((b) => {
+      const c = {};
+      b.keys.forEach((k) => Object.entries(M(k).caffeine).forEach(([ck, n]) => { c[ck] = (c[ck] || 0) + n; }));
+      return { ...b, value: avg(b.keys, (m) => m.caf), caffeine: c };
+    });
+    if (data.some((d) => d.value != null)) {
+      const counts = {};
+      P.keys.forEach((k) => Object.entries(M(k).caffeine).forEach(([ck, n]) => { counts[ck] = (counts[ck] || 0) + n; }));
+      const items = CAFFEINE.filter((d) => counts[d.key])
+        .map((d) => ({ label: d.label, value: counts[d.key] * d.mg, display: `${counts[d.key]}${d.unit} · ${counts[d.key] * d.mg}mg` }))
+        .sort((a, b) => b.value - a.value);
+      charts.push(chartCard({
+        cat: 'caffeine', title: '카페인 (mg)',
+        sub: P.daily ? `가로선은 하루 ${limit}mg · 회색 점은 안 마신 날` : `주별 하루 평균 · 가로선은 ${limit}mg`,
+        chart: () => barChart({
+          data, width: W, color: 'var(--c-caffeine)', zeroDot: true, goal: limit,
+          tipFor: (d) => [['var(--c-caffeine)', d.value ? `${Math.round(d.value)}mg` : '안 마심', d.value ? (P.daily ? caffeineList(d.caffeine).join(', ') : '하루 평균') : '']],
+        }),
+        extra: items.length ? hbarList(items) : null,
+        table: { head: [dayOrWeek, '카페인', '마신 것'], rows: data.filter((d) => d.value != null).map((d) => [d.title, `${Math.round(d.value)}mg`, caffeineList(d.caffeine).join(', ') || '안 마심']) },
       }));
     }
   }
@@ -489,11 +525,21 @@ function insightsCard(M, settings, today, me) {
   if (en.alcohol && en.sleep) {
     const r = split((k, a, b) => {
       const alc = M(k).alc, nx = addDays(k, 1);
-      if (alc == null || nx > today || M(nx).sleep == null) return;
-      (alc > 0 ? a : b).push(M(nx).sleep);
+      if (alc == null || nx > today || M(nx).night == null) return;
+      (alc > 0 ? a : b).push(M(nx).night);
     });
     if (r && Math.abs(r[0] - r[1]) >= 15) {
       items.push(['sleep', `술 마신 날 밤에는 평균 ${fmtDuration(r[0])} 잤어요. 안 마신 날보다 ${fmtDuration(Math.abs(r[0] - r[1]))} ${r[0] < r[1] ? '적게' : '더'} 잤어요.`]);
+    }
+  }
+  if (en.caffeine && en.sleep) {
+    const r = split((k, a, b) => {
+      const m = M(k), nx = addDays(k, 1);
+      if (m.caf == null || nx > today || M(nx).night == null) return;
+      (m.cafLate ? a : b).push(M(nx).night);
+    });
+    if (r && Math.abs(r[0] - r[1]) >= 15) {
+      items.push(['caffeine', `오후 늦게 카페인을 마신 날 밤에는 평균 ${fmtDuration(r[0])} 잤어요. 아닌 날보다 ${fmtDuration(Math.abs(r[0] - r[1]))} ${r[0] < r[1] ? '적게' : '더'} 잤어요.`]);
     }
   }
   if (en.exercise && en.mood) {

@@ -1,7 +1,7 @@
 import { getDay, getSettings } from './store.js';
 import { addDays, pad2, fmtDuration, fmtNum } from './util.js';
 import {
-  DRINKS, DRINK, SOJU_GLASS_G, EXERCISE, MEALS, MEAL_RATING, MOODS, SLEEP_Q, CUP_ML, INTENSITY,
+  DRINKS, DRINK, SOJU_GLASS_G, EXERCISE, MEALS, MEAL_RATING, MOODS, SLEEP_Q, CUP_ML, INTENSITY, CAFFEINE,
 } from './constants.js';
 
 export const toMin = (t) => {
@@ -31,6 +31,24 @@ export function alcoholGrams(a) {
 
 export const sojuGlasses = (grams) => grams / SOJU_GLASS_G;
 
+export function caffeineMg(c) {
+  if (!c) return 0;
+  return CAFFEINE.reduce((s, d) => s + (c[d.key] || 0) * d.mg, 0);
+}
+
+// 마신 mg / 안 마심 0 / 기록 없음 null
+export function caffeineStatus(day) {
+  const mg = caffeineMg(day.caffeine);
+  if (mg > 0) return mg;
+  return day.caffeineNone ? 0 : null;
+}
+
+// 오후 3시 이후(새벽 4시 전까지)에 마신 카페인은 잠에 영향을 줄 수 있어요
+export const isLateTime = (t) => !!t && (t >= '15:00' || t < '04:00');
+
+// 낮잠은 90분까지만 수면 목표에 더해 줍니다
+export const napCredit = (day) => Math.min(day.nap || 0, 90);
+
 // 마신 g / 안 마심 0 / 기록 없음 null
 export function drinkStatus(day) {
   const g = alcoholGrams(day.alcohol);
@@ -51,6 +69,7 @@ export function isLogged(cat, day) {
     case 'meal': return !!(day.meals && Object.keys(day.meals).length);
     case 'exercise': return exerciseMinutes(day) != null;
     case 'alcohol': return drinkStatus(day) != null;
+    case 'caffeine': return caffeineStatus(day) != null;
     case 'water': return day.water > 0;
     case 'supplement': return (day.supps || []).length > 0;
     case 'weight': return day.weight != null;
@@ -91,7 +110,13 @@ export function dayMetrics(day) {
   const sm = sleepMinutes(day.sleep);
   const bed = sm != null ? relFromEvening(day.sleep.bed) : null;
   return {
-    sleep: sm,
+    // sleep = 밤잠 + 낮잠, night = 밤잠만
+    sleep: sm != null ? sm + (day.nap || 0) : null,
+    night: sm,
+    nap: day.nap || null,
+    caf: caffeineStatus(day),
+    cafLate: caffeineMg(day.caffeine) > 0 && isLateTime(day.caffeineLast),
+    caffeine: day.caffeine || {},
     bed,
     wake: sm != null ? bed + sm : null,
     sleepQ: day.sleep?.quality ?? null,
@@ -111,6 +136,10 @@ export function drinkList(a) {
   return DRINKS.filter((d) => a?.[d.key]).map((d) => `${d.label} ${a[d.key]}${d.unit}`);
 }
 
+export function caffeineList(c) {
+  return CAFFEINE.filter((d) => c?.[d.key]).map((d) => `${d.label} ${c[d.key]}${d.unit}`);
+}
+
 export function exerciseList(list) {
   return (list || []).map((e) => `${EXERCISE[e.type]?.label || '운동'} ${e.minutes}분`);
 }
@@ -121,7 +150,7 @@ export function summarize(cat, day) {
   switch (cat) {
     case 'sleep': {
       const q = SLEEP_Q.find((o) => o.key === day.sleep.quality);
-      return `${day.sleep.bed} → ${day.sleep.wake} · ${fmtDuration(sleepMinutes(day.sleep))}${q ? ` · ${q.label}` : ''}`;
+      return `${day.sleep.bed} → ${day.sleep.wake} · ${fmtDuration(sleepMinutes(day.sleep))}${q ? ` · ${q.label}` : ''}${day.nap ? `\n낮잠 ${fmtDuration(day.nap)}` : ''}`;
     }
     case 'meal': {
       const parts = MEALS.filter((m) => day.meals?.[m.key]).map((m) => `${m.label} ${MEAL_RATING[day.meals[m.key]].label}`);
@@ -141,6 +170,11 @@ export function summarize(cat, day) {
       const g = drinkStatus(day);
       if (!g) return '안 마심';
       return `${drinkList(day.alcohol).join(', ')}\n소주 ${fmtNum(sojuGlasses(g))}잔 분량 · 알코올 약 ${Math.round(g)}g`;
+    }
+    case 'caffeine': {
+      const mg = caffeineStatus(day);
+      if (!mg) return '안 마심';
+      return `${caffeineList(day.caffeine).join(', ')}\n카페인 약 ${mg}mg${day.caffeineLast ? ` · 마지막 ${day.caffeineLast}` : ''}`;
     }
     case 'water':
       return `${day.water}잔 (${fmtNum((day.water * CUP_ML) / 1000, 2)}L)`;

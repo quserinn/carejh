@@ -6,7 +6,9 @@
 //   mealMemo: '점심 김치찌개',
 //   exercise: [{ type: 'run', minutes: 30, intensity: 2, memo: '' }],
 //   exerciseRest: true,
+//   nap: 30,                                              // 낮잠(분)
 //   alcohol: { soju: 3, beer: 1 },  alcoholNone: true,
+//   caffeine: { americano: 2 }, caffeineNone: true, caffeineLast: '15:40',
 //   water: 6, supps: ['k3f9a1'], weight: 62.3, mood: 4, memo: '한 줄 일기',
 // }
 
@@ -15,10 +17,10 @@ const KEY = 'carejh:data:v1';
 export const DEFAULT_SETTINGS = {
   name: '',
   character: null, // 'lion' | 'alpaca' — 처음 실행할 때 고릅니다
-  enabled: { sleep: true, meal: true, exercise: true, alcohol: true, water: true, supplement: true, weight: true, mood: true },
+  enabled: { sleep: true, meal: true, exercise: true, alcohol: true, caffeine: true, water: true, supplement: true, weight: true, mood: true },
   // 먹는 영양제 목록. 목록에서 빼도 지난 기록의 이름이 남도록 archived로 숨깁니다.
   supplements: [], // [{ id, name, archived? }]
-  goals: { sleepHours: 7, waterCups: 8, exerciseWeekMin: 150, alcoholDaysWeek: 2 },
+  goals: { sleepHours: 7, waterCups: 8, exerciseWeekMin: 150, alcoholDaysWeek: 2, caffeineMg: 400 },
   theme: 'system',
   lastBackupAt: null,
   nudgeSnoozedAt: null,
