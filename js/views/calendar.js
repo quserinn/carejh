@@ -82,14 +82,7 @@ export function renderCalendar(app) {
         h('button', { class: 'icon-btn flat', 'aria-label': '다음 달', disabled: month >= thisMonth, onclick: () => shiftMonth(1) }, icon('chevR'))
       ),
       h('div', { class: 'cal-week' }, WD.map((w) => h('span', null, w))),
-      h('div', { class: 'cal-grid' }, cells),
-      h(
-        'div',
-        { class: 'cal-legend' },
-        h('span', null, scoreRing(75), '하루 점수'),
-        h('span', null, h('span', { class: 'cal-dot' }), '점수 없음'),
-        settings.showAnniv && settings.anniversary && h('span', { class: 'legend-heart' }, icon('heart'), '기념일')
-      )
+      h('div', { class: 'cal-grid' }, cells)
     ),
     sel && dayDetail(app, sel, settings, me),
     scoreHelp(settings)
