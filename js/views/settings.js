@@ -93,6 +93,39 @@ export function renderSettings(app) {
       )
     ),
 
+    h('h2', { class: 'section-title' }, '우리'),
+    h(
+      'div',
+      { class: 'set-group' },
+      h(
+        'div',
+        { class: 'set-row', style: { '--cat': 'var(--love)' } },
+        h('span', { class: 'cat-icon sm' }, icon('heart')),
+        h(
+          'div',
+          { class: 'set-label' },
+          h('b', null, '처음 만난 날'),
+          h('small', null, s.anniversary ? '이날을 1일로 세요' : '날짜를 골라 주세요')
+        ),
+        h('input', {
+          type: 'date',
+          class: 'date-input',
+          value: s.anniversary || '',
+          max: todayKey(),
+          'aria-label': '처음 만난 날',
+          onchange: (e) => store.updateSettings((st) => { st.anniversary = e.target.value || null; }),
+        })
+      ),
+      h(
+        'div',
+        { class: 'set-row', style: { '--cat': 'var(--love)' } },
+        h('span', { class: 'cat-icon sm' }, icon('calendar')),
+        h('div', { class: 'set-label' }, h('b', null, '기념일 표시'), h('small', null, '100일, 1년 되는 날 당일에만 축하해요')),
+        h('button', { class: 'switch' + (s.showAnniv ? ' on' : ''), role: 'switch', 'aria-checked': !!s.showAnniv, 'aria-label': '기념일 표시', onclick: () => store.updateSettings((st) => { st.showAnniv = !st.showAnniv; }) }, h('i'))
+      )
+    ),
+    h('p', { class: 'set-note' }, '기념일이 다가와도 미리 알려주지 않고, 그날이 되면 깜짝 축하해요. 이 설정은 각자 폰에 따로 저장돼요.'),
+
     h('h2', { class: 'section-title' }, '목표'),
     h(
       'div',

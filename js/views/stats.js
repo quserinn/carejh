@@ -377,7 +377,7 @@ export function renderStats(app) {
           legend: legend([
             { color: 'var(--meal-good)', label: '건강하게', cls: 'round' },
             { color: 'var(--meal-ok)', label: '보통', cls: 'round' },
-            { color: 'var(--meal-heavy)', label: '과식·자극적', cls: 'round' },
+            { color: 'var(--meal-heavy)', label: '불량', cls: 'round' },
             { label: '안 먹음', cls: 'ring' },
           ]),
           table: {

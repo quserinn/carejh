@@ -31,7 +31,7 @@ export const MAIN_MEALS = ['breakfast', 'lunch', 'dinner'];
 export const MEAL_RATINGS = [
   { key: 'good', emoji: '🥗', label: '건강', long: '건강하게' },
   { key: 'ok', emoji: '🍚', label: '보통', long: '보통' },
-  { key: 'heavy', emoji: '🍔', label: '과식', long: '과식·자극적' },
+  { key: 'heavy', emoji: '🍔', label: '불량', long: '불량' },
   { key: 'skip', emoji: '✕', label: '안 먹음', long: '안 먹음' },
 ];
 export const MEAL_RATING = Object.fromEntries(MEAL_RATINGS.map((r) => [r.key, r]));

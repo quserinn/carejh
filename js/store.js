@@ -17,6 +17,8 @@ const KEY = 'carejh:data:v1';
 export const DEFAULT_SETTINGS = {
   name: '',
   character: null, // 'lion' | 'alpaca' — 처음 실행할 때 고릅니다
+  anniversary: '2026-04-21', // 처음 만난 날 (설정에서 바꿀 수 있어요)
+  showAnniv: true,
   enabled: { sleep: true, meal: true, exercise: true, alcohol: true, caffeine: true, water: true, supplement: true, weight: true, mood: true },
   // 먹는 영양제 목록. 목록에서 빼도 지난 기록의 이름이 남도록 archived로 숨깁니다.
   supplements: [], // [{ id, name, archived? }]

@@ -4,6 +4,7 @@ import { CATS, CAT } from '../constants.js';
 import { anyLogged, streak, summarize } from '../metrics.js';
 import { dayScore, scoreTier, scoreRingSVG, SCORE_PARTS } from '../score.js';
 import { character } from '../characters.js';
+import { anniversaryOn, annivMessage } from '../anniv.js';
 import { icon } from '../icons.js';
 
 function scoreRing(score) {
@@ -39,17 +40,20 @@ export function renderCalendar(app) {
     const future = k > today;
     const { score } = dayScore(day, settings);
     if (score != null) scores.push(score);
+    // 기념일은 그날이 되어야 표시돼요 (미리 알려주지 않음)
+    const anniv = settings.showAnniv && !future ? anniversaryOn(settings.anniversary, k) : null;
     const mark = score != null ? scoreRing(score) : anyLogged(day) ? h('span', { class: 'cal-dot' }) : null;
     cells.push(
       h(
         'button',
         {
-          class: 'cal-cell' + (k === today ? ' today' : '') + (k === sel ? ' sel' : '') + (future ? ' future' : ''),
+          class: 'cal-cell' + (k === today ? ' today' : '') + (k === sel ? ' sel' : '') + (future ? ' future' : '') + (anniv ? ' anniv' : ''),
           disabled: future,
-          'aria-label': `${m}월 ${d}일${score != null ? `, ${score}점` : ''}`,
+          'aria-label': `${m}월 ${d}일${anniv ? `, ${anniv.title}` : ''}${score != null ? `, ${score}점` : ''}`,
           'aria-pressed': k === sel,
           onclick: () => { st.calSelected = k; app.render({ keepScroll: true }); },
         },
+        anniv && h('span', { class: 'cal-heart' }, icon('heart')),
         h('span', { class: 'cal-num' }, d),
         h('span', { class: 'cal-mark' }, mark)
       )
@@ -79,7 +83,13 @@ export function renderCalendar(app) {
       ),
       h('div', { class: 'cal-week' }, WD.map((w) => h('span', null, w))),
       h('div', { class: 'cal-grid' }, cells),
-      h('div', { class: 'cal-legend' }, h('span', null, scoreRing(75), '하루 점수'), h('span', null, h('span', { class: 'cal-dot' }), '기록이 적어 점수 없음'))
+      h(
+        'div',
+        { class: 'cal-legend' },
+        h('span', null, scoreRing(75), '하루 점수'),
+        h('span', null, h('span', { class: 'cal-dot' }), '점수 없음'),
+        settings.showAnniv && settings.anniversary && h('span', { class: 'legend-heart' }, icon('heart'), '기념일')
+      )
     ),
     sel && dayDetail(app, sel, settings, me),
     scoreHelp(settings)
@@ -127,6 +137,10 @@ function dayDetail(app, key, settings, me) {
     'section',
     { class: 'card day-detail' },
     h('h3', null, fmtDayTitle(key)),
+    (() => {
+      const a = settings.showAnniv ? anniversaryOn(settings.anniversary, key) : null;
+      return a && h('div', { class: 'dd-anniv' }, icon('heart'), h('div', null, h('b', null, a.title), h('br'), annivMessage(a, key)));
+    })(),
     scoreBlock,
     scoreBlock && rows.length ? h('div', { class: 'dd-divider' }) : null,
     rows.length

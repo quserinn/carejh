@@ -11,6 +11,7 @@ const ASSETS = [
   './js/icons.js',
   './js/characters.js',
   './js/score.js',
+  './js/anniv.js',
   './js/constants.js',
   './js/store.js',
   './js/metrics.js',

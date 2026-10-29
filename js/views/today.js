@@ -6,7 +6,8 @@ import { CATS, CAT, SLEEP_Q, MEALS, MAIN_MEALS, MEAL_RATINGS, EXERCISES, EXERCIS
 import {
   sleepMinutes, alcoholGrams, sojuGlasses, caffeineMg, isLateTime, napCredit, isLogged, anyLogged, findLast, exerciseMinutes, activeSupps,
 } from '../metrics.js';
-import { character, MOOD_EXPR, SLEEP_EXPR } from '../characters.js';
+import { character, duo, MOOD_EXPR, SLEEP_EXPR } from '../characters.js';
+import { anniversaryOn, annivMessage, annivHeadline } from '../anniv.js';
 import { openSheet } from '../sheet.js';
 import { icon } from '../icons.js';
 
@@ -51,7 +52,7 @@ export function renderToday(app) {
     weekEl = w;
     heroEl = hr;
   };
-  const root = h('div', { class: 'view' }, topBar(ctx), weekEl, heroEl, backupNudge(ctx), cats.map((c) => CARDS[c.key](ctx)));
+  const root = h('div', { class: 'view' }, topBar(ctx), weekEl, annivBanner(ctx), heroEl, backupNudge(ctx), cats.map((c) => CARDS[c.key](ctx)));
   enableSwipe(root, app);
   return root;
 }
@@ -132,6 +133,8 @@ function heroLine(ctx, cats, done) {
   const glasses = sojuGlasses(alcoholGrams(day.alcohol));
   const has = (k) => settings.enabled[k];
 
+  const anniv = settings.showAnniv ? anniversaryOn(settings.anniversary, date) : null;
+  if (anniv && date === today) return ['proud', `오늘은 ${anniv.title}! 축하해. 기록도 잊지 말자.`];
   if (date !== today) {
     if (!done) return ['wow', `${fmtMD(date)}은 어땠어? 생각나는 것만 채워도 좋아.`];
     if (done === total) return ['proud', `${fmtMD(date)} 기록 완료! 꼼꼼하다.`];
@@ -175,6 +178,19 @@ function hero(ctx, cats) {
         h('div', { class: 'cat-dots', style: { '--n': cats.length } }, cats.map((c) => h('span', { class: 'cd' + (isLogged(c.key, day) ? ' on' : ''), style: { '--cat': `var(--c-${c.key})` }, title: c.label }, icon(c.key))))
       )
     )
+  );
+}
+
+// 기념일 당일에만 축하 카드를 보여줌. 미리 남은 날짜를 세지는 않아요
+function annivBanner({ date, settings }) {
+  if (!settings.showAnniv || date > todayKey()) return null;
+  const a = anniversaryOn(settings.anniversary, date);
+  if (!a) return null;
+  return h(
+    'section',
+    { class: 'anniv-celebrate' },
+    duo('cheer', 'cheer'),
+    h('div', { class: 'ac-body' }, h('p', { class: 'ac-kicker' }, icon('heart'), fmtMD(date)), h('h3', null, annivHeadline(a)), h('p', null, annivMessage(a, date)))
   );
 }
 

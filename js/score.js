@@ -6,7 +6,7 @@ import { clamp } from './util.js';
 
 export const SCORE_PARTS = [
   { key: 'sleep', max: 25, rule: '목표 시간만큼 자면 만점이고, 모자랄수록 깎여요. 낮잠은 90분까지 더해 주고, 개운했는지도 반영해요.' },
-  { key: 'meal', max: 25, rule: '건강하게 먹을수록 높아요. 과식하거나 끼니를 거르면 낮아져요.' },
+  { key: 'meal', max: 25, rule: '건강하게 먹을수록 높아요. 불량하게 먹거나 끼니를 거르면 낮아져요.' },
   { key: 'exercise', max: 20, rule: '30분 넘게 운동하면 만점. 쉬는 날도 조금은 쳐 줘요.' },
   { key: 'alcohol', max: 15, rule: '안 마시면 만점, 마실수록 깎여요. 소주 5잔이 넘으면 마이너스예요.' },
   { key: 'caffeine', max: 5, rule: '하루 권장량 안이면 만점, 넘으면 깎여요. 오후 3시 넘어 마시면 조금 감점.' },
