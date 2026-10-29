@@ -573,7 +573,22 @@ function alcoholCard(ctx) {
     );
   }
 
-  return card('alcohol', { value: valueBox(g > 0 ? `${fmtNum(glasses)}잔` : '', g > 0 ? '소주 환산' : '') }, h('div', { class: 'drink-list' }, rows), react, weekNote);
+  const toNone = () => {
+    app.state.alcoholOpen = null;
+    ctx.save((d) => { d.alcoholNone = true; d.alcohol = null; });
+  };
+
+  return card('alcohol', { value: valueBox(g > 0 ? `${fmtNum(glasses)}잔` : '', g > 0 ? '소주 환산' : '') }, h('div', { class: 'drink-list' }, rows), react, weekNote, noneFoot(g > 0, toNone));
+}
+
+// '마셨어요'를 잘못 눌렀을 때 '안 마심'으로 되돌리는 줄
+function noneFoot(had, onNone) {
+  return h(
+    'div',
+    { class: 'ex-foot none-foot' },
+    h('span', { class: 'card-note', style: { margin: '0' } }, had ? '잘못 기록했다면' : '안 마셨다면'),
+    h('button', { class: 'text-btn', onclick: () => { if (had && !confirm("마신 기록을 지우고 '안 마심'으로 바꿀까요?")) return; onNone(); } }, '안 마심으로 기록')
+  );
 }
 
 function soberText(date) {
@@ -661,7 +676,12 @@ function caffeineCard(ctx) {
   const last = day.caffeineLast;
   const lastNote = mg > 0 && last ? h('div', { class: 'card-note' }, `마지막 카페인 ${last}${isLateTime(last) ? ' · 오후 3시 넘어 마시면 잠들기 어려울 수 있어요' : ''}`) : null;
 
-  return card('caffeine', { value: valueBox(mg > 0 ? `${mg}mg` : '', mg > 0 ? `권장량의 ${Math.round((mg / limit) * 100)}%` : '') }, h('div', { class: 'drink-list' }, rows), react, lastNote);
+  const toNone = () => {
+    app.state.caffeineOpen = null;
+    ctx.save((d) => { d.caffeineNone = true; d.caffeine = null; d.caffeineLast = null; });
+  };
+
+  return card('caffeine', { value: valueBox(mg > 0 ? `${mg}mg` : '', mg > 0 ? `권장량의 ${Math.round((mg / limit) * 100)}%` : '') }, h('div', { class: 'drink-list' }, rows), react, lastNote, noneFoot(mg > 0, toNone));
 }
 
 // ---------- 물 ----------
